@@ -17,10 +17,10 @@ type TextRecognizer struct {
 	labels   []string
 }
 
-func NewTextRecognizer(modelDir string, args map[string]interface{}) *TextRecognizer {
+func NewTextRecognizer(modelDir string, args map[string]any) *TextRecognizer {
 	shapes := []int{3, 32, 320}
 	if v, ok := args["rec_image_shape"]; ok {
-		for i, s := range v.([]interface{}) {
+		for i, s := range v.([]any) {
 			shapes[i] = s.(int)
 		}
 	}

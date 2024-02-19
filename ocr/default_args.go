@@ -1,7 +1,7 @@
 package ocr
 
 var (
-	defaultArgs = map[string]interface{}{
+	defaultArgs = map[string]any{
 		"use_gpu":         true,
 		"ir_optim":        true,
 		"enable_mkldnn":   false,
@@ -24,7 +24,7 @@ var (
 
 		"rec_algorithm":      "CRNN",
 		"rec_model_dir":      "https://paddleocr.bj.bcebos.com/20-09-22/mobile/rec/ch_ppocr_mobile_v1.1_rec_infer.tar",
-		"rec_image_shape":    []interface{}{3, 32, 320},
+		"rec_image_shape":    []any{3, 32, 320},
 		"rec_char_type":      "ch",
 		"rec_batch_num":      30,
 		"max_text_length":    25,
@@ -33,8 +33,8 @@ var (
 
 		"use_angle_cls":   false,
 		"cls_model_dir":   "https://paddleocr.bj.bcebos.com/20-09-22/cls/ch_ppocr_mobile_v1.1_cls_infer.tar",
-		"cls_image_shape": []interface{}{3, 48, 192},
-		"label_list":      []interface{}{"0", "180"},
+		"cls_image_shape": []any{3, 48, 192},
+		"label_list":      []any{"0", "180"},
 		"cls_batch_num":   30,
 		"cls_thresh":      0.9,
 

@@ -33,7 +33,7 @@ type PaddleModel struct {
 	useIROptim  bool
 }
 
-func NewPaddleModel(args map[string]interface{}) *PaddleModel {
+func NewPaddleModel(args map[string]any) *PaddleModel {
 	return &PaddleModel{
 		useGPU:      getBool(args, "use_gpu", false),
 		deviceID:    getInt(args, "gpu_id", 0),
@@ -86,7 +86,7 @@ type TextPredictSystem struct {
 	rec      *TextRecognizer
 }
 
-func NewTextPredictSystem(args map[string]interface{}) *TextPredictSystem {
+func NewTextPredictSystem(args map[string]any) *TextPredictSystem {
 	sys := &TextPredictSystem{
 		detector: NewDBDetector(getString(args, "det_model_dir", ""), args),
 		rec:      NewTextRecognizer(getString(args, "rec_model_dir", ""), args),
@@ -174,11 +174,11 @@ func (sys *TextPredictSystem) Run(img gocv.Mat) []OCRText {
 }
 
 type OCRSystem struct {
-	args map[string]interface{}
+	args map[string]any
 	tps  *TextPredictSystem
 }
 
-func NewOCRSystem(confFile string, a map[string]interface{}) *OCRSystem {
+func NewOCRSystem(confFile string, a map[string]any) *OCRSystem {
 	args, err := ReadYaml(confFile)
 	if err != nil {
 		log.Printf("Read config file %v failed! Please check. err: %v\n", confFile, err)

@@ -105,7 +105,7 @@ func (tensor *ZeroCopyTensor) DataType() PaddleDType {
 	return PaddleDType(tensor.c.dtype)
 }
 
-func (tensor *ZeroCopyTensor) SetValue(value interface{}) {
+func (tensor *ZeroCopyTensor) SetValue(value any) {
 	val := reflect.ValueOf(value)
 	shape, dtype := ShapeAndTypeOf(val)
 	num := numel(shape)
@@ -151,7 +151,7 @@ func TypeOf(dtype PaddleDType, shape []int32) reflect.Type {
 	return ret
 }
 
-func (tensor *ZeroCopyTensor) Value() interface{} {
+func (tensor *ZeroCopyTensor) Value() any {
 	t := TypeOf(PaddleDType(tensor.c.dtype), tensor.shape)
 	value := reflect.New(t)
 	c_bytes := tensor.c.data.data

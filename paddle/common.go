@@ -22,6 +22,6 @@ func numel(shape []int32) int32 {
 	return n
 }
 
-func bug(format string, args ...interface{}) error {
+func bug(format string, args ...any) error {
 	return fmt.Errorf("Bug %v", fmt.Sprintf(format, args...))
 }

@@ -21,10 +21,10 @@ type ClsResult struct {
 	Label int64
 }
 
-func NewTextClassifier(modelDir string, args map[string]interface{}) *TextClassifier {
+func NewTextClassifier(modelDir string, args map[string]any) *TextClassifier {
 	shapes := []int{3, 48, 192}
 	if v, ok := args["cls_image_shape"]; ok {
-		for i, s := range v.([]interface{}) {
+		for i, s := range v.([]any) {
 			shapes[i] = s.(int)
 		}
 	}
