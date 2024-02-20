@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/LKKlein/gocv"
+	"gocv.io/x/gocv"
 )
 
 func resizeByShape(img gocv.Mat, resizeShape []int) (gocv.Mat, int, int) {
@@ -133,39 +133,49 @@ func clsResize(img gocv.Mat, resizeShape []int) gocv.Mat {
 	return img
 }
 
-func crnnPreprocess(img gocv.Mat, resizeShape []int, mean []float32, std []float32,
-	scaleFactor float32, whRatio float64, charType string) []float32 {
-	imgH := resizeShape[1]
-	imgW := resizeShape[2]
-	if charType == "ch" {
-		imgW = int(32 * whRatio)
-	}
-	h, w := img.Rows(), img.Cols()
-	ratio := float64(w) / float64(h)
+func crnnResize(img gocv.Mat, recImageShape []int, whRatio float64) gocv.Mat {
+	imgH, imgW := recImageShape[1], recImageShape[2]
+	imgW = int(float64(imgH) * whRatio)
+	ratio := float64(img.Cols()) / float64(img.Rows())
+
 	var resizeW int
 	if math.Ceil(float64(imgH)*ratio) > float64(imgW) {
 		resizeW = imgW
 	} else {
 		resizeW = int(math.Ceil(float64(imgH) * ratio))
 	}
-	gocv.Resize(img, &img, image.Pt(resizeW, imgH), 0, 0, gocv.InterpolationLinear)
 
-	img.ConvertTo(&img, gocv.MatTypeCV32F)
-	img.DivideFloat(scaleFactor)
-	img.SubtractScalar(gocv.NewScalar(float64(mean[0]), float64(mean[1]), float64(mean[2]), 0))
-	img.DivideScalar(gocv.NewScalar(float64(std[0]), float64(std[1]), float64(std[2]), 0))
-	defer img.Close()
+	resizeImg := gocv.NewMat()
+	gocv.Resize(img, &resizeImg, image.Pt(resizeW, imgH), 0, 0, gocv.InterpolationLinear)
+	gocv.CopyMakeBorder(resizeImg, &resizeImg, 0, 0, 0, imgW-resizeImg.Cols(), gocv.BorderConstant, color.RGBA{0, 0, 0, 0})
+	return resizeImg
+}
 
-	if resizeW < imgW {
-		gocv.CopyMakeBorder(img, &img, 0, 0, 0, imgW-resizeW, gocv.BorderConstant, color.RGBA{0, 0, 0, 0})
+// https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/preprocess_op.cpp#L40
+func normalize(im gocv.Mat, mean []float32, scale []float32, isScale bool) {
+	e := float32(1.0)
+	if isScale {
+		e /= 255.0
 	}
+	im.ConvertToWithParams(&im, gocv.MatTypeCV32FC3, e, 0)
+	bgrChannels := gocv.Split(im)
+	for i := range bgrChannels {
+		bgrChannels[i].ConvertToWithParams(&bgrChannels[i], gocv.MatTypeCV32FC1, 1.0*scale[i], (0.0-mean[i])*scale[i])
+	}
+	gocv.Merge(bgrChannels, &im)
+}
 
-	c := gocv.Split(img)
-	data := make([]float32, img.Rows()*img.Cols()*img.Channels())
-	for i := 0; i < 3; i++ {
-		defer c[i].Close()
-		x, _ := c[i].DataPtrFloat32()
-		copy(data[i*img.Rows()*img.Cols():], x)
+// https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/preprocess_op.cpp#L19
+func permute(im gocv.Mat) []float32 {
+	rh := im.Rows()
+	rw := im.Cols()
+	rc := im.Channels()
+	data := make([]float32, rh*rw*rc)
+	for i := 0; i < rc; i++ {
+		t := gocv.NewMatWithSize(rh, rw, gocv.MatTypeCV32FC1)
+		gocv.ExtractChannel(im, &t, i)
+		x, _ := t.DataPtrFloat32()
+		copy(data[i*rh*rw:], x)
 	}
 	return data
 }

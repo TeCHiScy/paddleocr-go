@@ -6,9 +6,9 @@ import (
 	"math"
 	"sort"
 
-	"github.com/LKKlein/gocv"
 	clipper "github.com/ctessum/go.clipper"
 	pd "github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi"
+	"gocv.io/x/gocv"
 )
 
 type xFloatSortBy [][]float32
@@ -98,7 +98,7 @@ func (d *DBPostProcess) boxScoreFast(array [][]float32, pred gocv.Mat) float64 {
 	ppt[0][1] = image.Point{int(array[1][0]) - xmin, int(array[1][1]) - ymin}
 	ppt[0][2] = image.Point{int(array[2][0]) - xmin, int(array[2][1]) - ymin}
 	ppt[0][3] = image.Point{int(array[3][0]) - xmin, int(array[3][1]) - ymin}
-	gocv.FillPoly(&mask, ppt, color.RGBA{0, 0, 1, 0})
+	gocv.FillPoly(&mask, gocv.NewPointsVectorFromPoints(ppt), color.RGBA{0, 0, 1, 0})
 	croppedImg := pred.Region(image.Rect(xmin, ymin, xmax+1, ymax+1))
 	s := croppedImg.MeanWithMask(mask)
 	return s.Val1
@@ -139,15 +139,14 @@ func (d *DBPostProcess) unClip(box [][]float32) gocv.RotatedRect {
 		points[2] = image.Pt(1, 1)
 		points[3] = image.Pt(0, 1)
 		res = gocv.RotatedRect{
-			Contour:      points,
 			BoundingRect: image.Rect(0, 0, 1, 1),
-			Center:       gocv.Point2f{X: 0.5, Y: 0.5},
+			Center:       image.Pt(0, 0), // gocv.Point2f{X: 0.5, Y: 0.5},
 			Width:        1,
 			Height:       1,
 			Angle:        0,
 		}
 	} else {
-		res = gocv.MinAreaRect(points)
+		res = gocv.MinAreaRect(gocv.NewPointVectorFromPoints(points))
 	}
 	return res
 }
@@ -156,16 +155,16 @@ func (d *DBPostProcess) boxesFromBitmap(pred gocv.Mat, mask gocv.Mat, ratioH flo
 	height, width := mask.Rows(), mask.Cols()
 	mask.MultiplyUChar(255)
 	contours := gocv.FindContours(mask, gocv.RetrievalList, gocv.ChainApproxSimple)
-	numContours := len(contours)
+	numContours := contours.Size()
 	if numContours > d.maxCandidates {
 		numContours = d.maxCandidates
 	}
 
 	boxes := make([][][]int, 0, numContours)
 	for i := 0; i < numContours; i++ {
-		contour := contours[i]
+		contour := contours.At(i)
 		boundingbox := gocv.MinAreaRect(contour)
-		if boundingbox.Width < float32(d.minSize) || boundingbox.Height < float32(d.minSize) {
+		if boundingbox.Width < d.minSize || boundingbox.Height < d.minSize {
 			continue
 		}
 		points := d.getMinBoxes(boundingbox)
@@ -175,7 +174,7 @@ func (d *DBPostProcess) boxesFromBitmap(pred gocv.Mat, mask gocv.Mat, ratioH flo
 		}
 
 		box := d.unClip(points)
-		if box.Width < float32(d.minSize+2) || box.Height < float32(d.minSize+2) {
+		if box.Width < d.minSize+2 || box.Height < d.minSize+2 {
 			continue
 		}
 
@@ -183,13 +182,10 @@ func (d *DBPostProcess) boxesFromBitmap(pred gocv.Mat, mask gocv.Mat, ratioH flo
 		dstHeight, dstWidth := pred.Rows(), pred.Cols()
 		intcliparray := make([][]int, 4)
 		for i := 0; i < 4; i++ {
-			p := []int{
-				int(float64(clip(int(math.Round(
-					float64(cliparray[i][0]/float32(width)*float32(dstWidth)))), 0, dstWidth)) / ratioW),
-				int(float64(clip(int(math.Round(
-					float64(cliparray[i][1]/float32(height)*float32(dstHeight)))), 0, dstHeight)) / ratioH),
+			intcliparray[i] = []int{
+				int(float64(clip(int(math.Round(float64(cliparray[i][0]/float32(width)*float32(dstWidth)))), 0, dstWidth)) / ratioW),
+				int(float64(clip(int(math.Round(float64(cliparray[i][1]/float32(height)*float32(dstHeight)))), 0, dstHeight)) / ratioH),
 			}
-			intcliparray[i] = p
 		}
 		boxes = append(boxes, intcliparray)
 	}

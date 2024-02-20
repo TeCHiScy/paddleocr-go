@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/LKKlein/gocv"
+	"gocv.io/x/gocv"
 	"gopkg.in/yaml.v3"
 )
 

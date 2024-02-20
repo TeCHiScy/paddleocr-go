@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/LKKlein/gocv"
+	"gocv.io/x/gocv"
 )
 
 type DBDetector struct {

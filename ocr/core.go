@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/LKKlein/gocv"
 	pd "github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi"
+	"gocv.io/x/gocv"
 )
 
 type PaddleModel struct {
@@ -132,7 +132,10 @@ func (sys *TextPredictSystem) getRotateCropImage(img gocv.Mat, box [][]int) gocv
 	points[2] = image.Pt(box[2][0], box[2][1])
 	points[3] = image.Pt(box[3][0], box[3][1])
 
-	M := gocv.GetPerspectiveTransform(points, ptsstd)
+	M := gocv.GetPerspectiveTransform(
+		gocv.NewPointVectorFromPoints(points),
+		gocv.NewPointVectorFromPoints(ptsstd),
+	)
 	defer M.Close()
 	dstimg := gocv.NewMat()
 	gocv.WarpPerspectiveWithParams(img, &dstimg, M, image.Pt(cropW, cropH),

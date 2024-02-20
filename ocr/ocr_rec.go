@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/LKKlein/gocv"
+	"gocv.io/x/gocv"
 )
 
 type TextRecognizer struct {
@@ -15,6 +15,10 @@ type TextRecognizer struct {
 	shape    []int
 	charType string
 	labels   []string
+
+	mean    []float32
+	scale   []float32
+	isScale bool
 }
 
 func NewTextRecognizer(modelDir string, args map[string]any) *TextRecognizer {
@@ -36,6 +40,10 @@ func NewTextRecognizer(modelDir string, args map[string]any) *TextRecognizer {
 		charType:    getString(args, "rec_char_type", "ch"),
 		shape:       shapes,
 		labels:      labels,
+
+		mean:    []float32{0.5, 0.5, 0.5},
+		scale:   []float32{1 / 0.5, 1 / 0.5, 1 / 0.5},
+		isScale: true,
 	}
 	if checkModelExists(modelDir) {
 		home, _ := os.UserHomeDir()
@@ -50,38 +58,43 @@ func NewTextRecognizer(modelDir string, args map[string]any) *TextRecognizer {
 func (rec *TextRecognizer) Run(imgs []gocv.Mat, bboxes [][][]int) []OCRText {
 	recResult := make([]OCRText, 0, len(imgs))
 	batch := rec.batchNum
-	var recTime int64 = 0
-	c, h, w := rec.shape[0], rec.shape[1], rec.shape[2]
+	var recTime int64
+	c, imgH, imgW := rec.shape[0], rec.shape[1], rec.shape[2]
 	for i := 0; i < len(imgs); i += batch {
 		j := i + batch
 		if len(imgs) < j {
 			j = len(imgs)
 		}
 
-		maxwhratio := 0.0
+		maxWhRatio := float64(imgW) / float64(imgH)
 		for k := i; k < j; k++ {
 			h, w := imgs[k].Rows(), imgs[k].Cols()
-			ratio := float64(w) / float64(h)
-			if ratio > maxwhratio {
-				maxwhratio = ratio
+			whRatio := float64(w) / float64(h)
+			if whRatio > maxWhRatio {
+				maxWhRatio = whRatio
 			}
 		}
 
-		normimgs := make([]float32, (j-i)*c*h*w)
+		batchWidth := imgW
+		normimgs := make([]float32, (j-i)*c*imgH*imgW)
 		for k := i; k < j; k++ {
-			data := crnnPreprocess(imgs[k], rec.shape, []float32{0.5, 0.5, 0.5},
-				[]float32{0.5, 0.5, 0.5}, 255.0, maxwhratio, rec.charType)
-			copy(normimgs[(k-i)*c*h*w:], data)
+			srcimg := gocv.NewMat()
+			imgs[k].CopyTo(&srcimg)
+			resizeImg := crnnResize(srcimg, rec.shape, maxWhRatio)
+			normalize(resizeImg, rec.mean, rec.scale, rec.isScale)
+
+			data, _ := resizeImg.DataPtrFloat32()
+			copy(normimgs[(k-i)*c*imgH*imgW:], data)
+			if resizeImg.Cols() > batchWidth {
+				batchWidth = resizeImg.Cols()
+			}
 		}
 
 		st := time.Now()
-		rec.input.Reshape([]int32{int32(j - i), int32(c), int32(h), int32(w)})
+		rec.input.Reshape([]int32{int32(j - i), int32(c), int32(imgH), int32(imgW)})
 		rec.input.CopyFromCpu(normimgs)
 
-		// rec.predictor.SetZeroCopyInput(rec.input)
 		rec.predictor.Run()
-		// rec.predictor.GetZeroCopyOutput(rec.outputs[0])
-		// rec.predictor.GetZeroCopyOutput(rec.outputs[1])
 
 		predictShape := rec.outputs[0].Shape()
 		predictBatch := make([]float32, numElements(predictShape))
