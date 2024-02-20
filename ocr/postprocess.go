@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 	"sort"
 
 	clipper "github.com/ctessum/go.clipper"
@@ -86,10 +87,10 @@ func (d *DBPostProcess) boxScoreFast(array [][]float32, pred gocv.Mat) float64 {
 	boxX := []float32{array[0][0], array[1][0], array[2][0], array[3][0]}
 	boxY := []float32{array[0][1], array[1][1], array[2][1], array[3][1]}
 
-	xmin := clip(int(math.Floor(float64(minf(boxX)))), 0, width-1)
-	xmax := clip(int(math.Ceil(float64(maxf(boxX)))), 0, width-1)
-	ymin := clip(int(math.Floor(float64(minf(boxY)))), 0, height-1)
-	ymax := clip(int(math.Ceil(float64(maxf(boxY)))), 0, height-1)
+	xmin := clip(int(math.Floor(float64(slices.Min(boxX)))), 0, width-1)
+	xmax := clip(int(math.Ceil(float64(slices.Max(boxX)))), 0, width-1)
+	ymin := clip(int(math.Floor(float64(slices.Min(boxY)))), 0, height-1)
+	ymax := clip(int(math.Ceil(float64(slices.Max(boxY)))), 0, height-1)
 
 	mask := gocv.NewMatWithSize(ymax-ymin+1, xmax-xmin+1, gocv.MatTypeCV8UC1)
 	ppt := make([][]image.Point, 1)

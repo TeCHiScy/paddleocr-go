@@ -31,46 +31,6 @@ func clip(value, min, max int) int {
 	return value
 }
 
-func minf(data []float32) float32 {
-	v := data[0]
-	for _, val := range data {
-		if val < v {
-			v = val
-		}
-	}
-	return v
-}
-
-func maxf(data []float32) float32 {
-	v := data[0]
-	for _, val := range data {
-		if val > v {
-			v = val
-		}
-	}
-	return v
-}
-
-func mini(data []int) int {
-	v := data[0]
-	for _, val := range data {
-		if val < v {
-			v = val
-		}
-	}
-	return v
-}
-
-func maxi(data []int) int {
-	v := data[0]
-	for _, val := range data {
-		if val > v {
-			v = val
-		}
-	}
-	return v
-}
-
 func argmax(s []float32) (int, float32) {
 	max, idx := s[0], 0
 	for i, v := range s {

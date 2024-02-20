@@ -129,13 +129,13 @@ func (sys *TextPredictSystem) getRotateCropImage(img gocv.Mat, box [][]int) gocv
 	points[2] = image.Pt(box[2][0], box[2][1])
 	points[3] = image.Pt(box[3][0], box[3][1])
 
-	M := gocv.GetPerspectiveTransform(
+	m := gocv.GetPerspectiveTransform(
 		gocv.NewPointVectorFromPoints(points),
 		gocv.NewPointVectorFromPoints(ptsstd),
 	)
-	defer M.Close()
+	defer m.Close()
 	dstimg := gocv.NewMat()
-	gocv.WarpPerspectiveWithParams(img, &dstimg, M, image.Pt(cropW, cropH),
+	gocv.WarpPerspectiveWithParams(img, &dstimg, m, image.Pt(cropW, cropH),
 		gocv.InterpolationCubic, gocv.BorderReplicate, color.RGBA{0, 0, 0, 0})
 
 	if float64(dstimg.Rows()) >= float64(dstimg.Cols())*1.5 {
