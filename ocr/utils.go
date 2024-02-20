@@ -100,15 +100,14 @@ func maxi(data []int) int {
 	return v
 }
 
-func argmax(arr []float32) (int, float32) {
-	max_value, index := arr[0], 0
-	for i, item := range arr {
-		if item > max_value {
-			max_value = item
-			index = i
+func argmax(s []float32) (int, float32) {
+	max, idx := s[0], 0
+	for i, v := range s {
+		if v > max {
+			idx, max = i, v
 		}
 	}
-	return index, max_value
+	return idx, max
 }
 
 func checkModelExists(modelPath string) bool {

@@ -10,23 +10,23 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"paddleocr-go/paddle"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/LKKlein/gocv"
+	pd "github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi"
 )
 
 type PaddleModel struct {
-	predictor *paddle.Predictor
-	input     *paddle.ZeroCopyTensor
-	outputs   []*paddle.ZeroCopyTensor
+	predictor *pd.Predictor
+	input     *pd.Tensor
+	outputs   []*pd.Tensor
 
 	useGPU      bool
-	deviceID    int
-	initGPUMem  int
+	deviceID    int32
+	initGPUMem  uint64
 	numThreads  int
 	useMKLDNN   bool
 	useTensorRT bool
@@ -36,8 +36,8 @@ type PaddleModel struct {
 func NewPaddleModel(args map[string]any) *PaddleModel {
 	return &PaddleModel{
 		useGPU:      getBool(args, "use_gpu", false),
-		deviceID:    getInt(args, "gpu_id", 0),
-		initGPUMem:  getInt(args, "gpu_mem", 1000),
+		deviceID:    int32(getInt(args, "gpu_id", 0)),
+		initGPUMem:  uint64(getInt(args, "gpu_mem", 1000)),
 		numThreads:  getInt(args, "num_cpu_threads", 6),
 		useMKLDNN:   getBool(args, "enable_mkldnn", false),
 		useTensorRT: getBool(args, "use_tensorrt", false),
@@ -45,33 +45,34 @@ func NewPaddleModel(args map[string]any) *PaddleModel {
 	}
 }
 
-func (model *PaddleModel) LoadModel(modelDir string) {
-	config := paddle.NewAnalysisConfig()
+func (p *PaddleModel) LoadModel(modelDir string) {
+	config := pd.NewConfig()
 	config.DisableGlogInfo()
 
 	config.SetModel(modelDir+"/model", modelDir+"/params")
-	if model.useGPU {
-		config.EnableUseGpu(model.initGPUMem, model.deviceID)
+	if p.useGPU {
+		config.EnableUseGpu(p.initGPUMem, p.deviceID)
 	} else {
-		config.DisableGpu()
-		config.SetCpuMathLibraryNumThreads(model.numThreads)
-		if model.useMKLDNN {
-			config.EnableMkldnn()
+		// config.DisableGpu()
+		config.SetCpuMathLibraryNumThreads(p.numThreads)
+		if p.useMKLDNN {
+			config.EnableMKLDNN()
 		}
 	}
 
 	// config.EnableMemoryOptim()
-	if model.useIROptim {
+	if p.useIROptim {
 		config.SwitchIrOptim(true)
 	}
 
 	// false for zero copy tensor
-	config.SwitchUseFeedFetchOps(false)
-	config.SwitchSpecifyInputNames(true)
+	// config.SwitchUseFeedFetchOps(false)
+	// config.SwitchSpecifyInputNames(true)
+	config.EnableMemoryOptim(true)
 
-	model.predictor = paddle.NewPredictor(config)
-	model.input = model.predictor.GetInputTensors()[0]
-	model.outputs = model.predictor.GetOutputTensors()
+	p.predictor = pd.NewPredictor(config)
+	p.input = p.predictor.GetInputHandle(p.predictor.GetInputNames()[0])
+	p.outputs = []*pd.Tensor{p.predictor.GetOutputHandle(p.predictor.GetOutputNames()[0])}
 }
 
 type OCRText struct {

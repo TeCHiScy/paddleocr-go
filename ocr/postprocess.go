@@ -4,11 +4,11 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"paddleocr-go/paddle"
 	"sort"
 
 	"github.com/LKKlein/gocv"
 	clipper "github.com/ctessum/go.clipper"
+	pd "github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi"
 )
 
 type xFloatSortBy [][]float32
@@ -24,7 +24,7 @@ func (a xIntSortBy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a xIntSortBy) Less(i, j int) bool { return a[i][0] < a[j][0] }
 
 type DetPostProcess interface {
-	Run(output *paddle.ZeroCopyTensor, oriH, oriW int, ratioH, ratioW float64) [][][]int
+	Run(output *pd.Tensor, oriH, oriW int, ratioH, ratioW float64) [][][]int
 }
 
 type DBPostProcess struct {
@@ -235,19 +235,20 @@ func (d *DBPostProcess) filterTagDetRes(boxes [][][]int, oriH, oriW int) [][][]i
 	return points
 }
 
-func (d *DBPostProcess) Run(output *paddle.ZeroCopyTensor, oriH, oriW int, ratioH, ratioW float64) [][][]int {
-	v := output.Value().([][][][]float32)
-
+func (d *DBPostProcess) Run(output *pd.Tensor, oriH, oriW int, ratioH, ratioW float64) [][][]int {
 	shape := output.Shape()
-	height, width := int(shape[2]), int(shape[3])
+	h, w := int(shape[2]), int(shape[3])
 
-	pred := gocv.NewMatWithSize(height, width, gocv.MatTypeCV32F)
-	bitmap := gocv.NewMatWithSize(height, width, gocv.MatTypeCV8UC1)
+	out := make([]float32, numElements(shape))
+	output.CopyToCpu(out)
+
+	pred := gocv.NewMatWithSize(h, w, gocv.MatTypeCV32F)
+	bitmap := gocv.NewMatWithSize(h, w, gocv.MatTypeCV8UC1)
 	thresh := float32(d.thresh)
-	for i := 0; i < height; i++ {
-		for j := 0; j < width; j++ {
-			pred.SetFloatAt(i, j, v[0][0][i][j])
-			if v[0][0][i][j] > thresh {
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			pred.SetFloatAt(i, j, out[i*w+j])
+			if out[i*w+j] > thresh {
 				bitmap.SetUCharAt(i, j, 1)
 			} else {
 				bitmap.SetUCharAt(i, j, 0)

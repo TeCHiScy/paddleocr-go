@@ -67,11 +67,7 @@ func (rec *TextRecognizer) Run(imgs []gocv.Mat, bboxes [][][]int) []OCRText {
 			}
 		}
 
-		if rec.charType == "ch" {
-			w = int(32 * maxwhratio)
-		}
 		normimgs := make([]float32, (j-i)*c*h*w)
-
 		for k := i; k < j; k++ {
 			data := crnnPreprocess(imgs[k], rec.shape, []float32{0.5, 0.5, 0.5},
 				[]float32{0.5, 0.5, 0.5}, 255.0, maxwhratio, rec.charType)
@@ -79,49 +75,44 @@ func (rec *TextRecognizer) Run(imgs []gocv.Mat, bboxes [][][]int) []OCRText {
 		}
 
 		st := time.Now()
-		rec.input.SetValue(normimgs)
 		rec.input.Reshape([]int32{int32(j - i), int32(c), int32(h), int32(w)})
+		rec.input.CopyFromCpu(normimgs)
 
-		rec.predictor.SetZeroCopyInput(rec.input)
-		rec.predictor.ZeroCopyRun()
-		rec.predictor.GetZeroCopyOutput(rec.outputs[0])
-		rec.predictor.GetZeroCopyOutput(rec.outputs[1])
+		// rec.predictor.SetZeroCopyInput(rec.input)
+		rec.predictor.Run()
+		// rec.predictor.GetZeroCopyOutput(rec.outputs[0])
+		// rec.predictor.GetZeroCopyOutput(rec.outputs[1])
 
-		recIdxBatch := rec.outputs[0].Value().([][]int64)
-		recIdxLod := rec.outputs[0].Lod()
-
-		predictBatch := rec.outputs[1].Value().([][]float32)
-		predictLod := rec.outputs[1].Lod()
+		predictShape := rec.outputs[0].Shape()
+		predictBatch := make([]float32, numElements(predictShape))
+		rec.outputs[0].CopyToCpu(predictBatch)
 		recTime += int64(time.Since(st).Milliseconds())
 
-		for rno := 0; rno < len(recIdxLod)-1; rno++ {
-			predIdx := make([]int, 0, 2)
-			for beg := recIdxLod[rno]; beg < recIdxLod[rno+1]; beg++ {
-				predIdx = append(predIdx, int(recIdxBatch[beg][0]))
+		for m := 0; m < int(predictShape[0]); m++ {
+			var text string
+			var count int
+			var score float32
+			var lastIndex int
+			for n := 0; n < int(predictShape[1]); n++ {
+				l := (m*int(predictShape[1]) + n) * int(predictShape[2])
+				r := (m*int(predictShape[1]) + n + 1) * int(predictShape[2])
+				// get argmax_idx & get score
+				argmaxIdx, maxValue := argmax(predictBatch[l:r])
+				if argmaxIdx > 0 && (!(n > 0 && argmaxIdx == lastIndex)) {
+					score += maxValue
+					count += 1
+					text += rec.labels[argmaxIdx]
+				}
+				lastIndex = argmaxIdx
 			}
-			if len(predIdx) == 0 {
+			if score == 0.0 && count == 0 {
 				continue
 			}
-			words := ""
-			for n := 0; n < len(predIdx); n++ {
-				words += rec.labels[predIdx[n]]
-			}
-
-			score := 0.0
-			count := 0
-			blankPosition := int(rec.outputs[1].Shape()[1])
-			for beg := predictLod[rno]; beg < predictLod[rno+1]; beg++ {
-				argMaxID, maxVal := argmax(predictBatch[beg])
-				if blankPosition-1-argMaxID > 0 {
-					score += float64(maxVal)
-					count++
-				}
-			}
-			score = score / float64(count)
+			score /= float32(count)
 			recResult = append(recResult, OCRText{
-				BBox:  bboxes[i+rno],
-				Text:  words,
-				Score: score,
+				BBox:  bboxes[i+m],
+				Text:  text,
+				Score: float64(score),
 			})
 		}
 	}

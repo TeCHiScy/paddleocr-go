@@ -67,41 +67,35 @@ func (cls *TextClassifier) Run(imgs []gocv.Mat) []gocv.Mat {
 		}
 
 		st := time.Now()
-		cls.input.SetValue(normImgs)
 		cls.input.Reshape([]int32{int32(j - i), int32(c), int32(h), int32(w)})
+		cls.input.CopyFromCpu(normImgs)
 
-		cls.predictor.SetZeroCopyInput(cls.input)
-		cls.predictor.ZeroCopyRun()
-		cls.predictor.GetZeroCopyOutput(cls.outputs[0])
-		cls.predictor.GetZeroCopyOutput(cls.outputs[1])
+		cls.predictor.Run()
 
-		var probout [][]float32
-		var labelout []int64
-		if len(cls.outputs[0].Shape()) == 2 {
-			probout = cls.outputs[0].Value().([][]float32)
-		} else {
-			labelout = cls.outputs[0].Value().([]int64)
-		}
+		predictShape := cls.outputs[0].Shape()
+		predictBatch := make([]float32, numElements(predictShape))
+		cls.outputs[0].CopyToCpu(predictBatch)
 
-		if len(cls.outputs[1].Shape()) == 2 {
-			probout = cls.outputs[1].Value().([][]float32)
-		} else {
-			labelout = cls.outputs[1].Value().([]int64)
-		}
-		clsTime += int64(time.Since(st).Milliseconds())
-
-		for no, label := range labelout {
-			score := probout[no][label]
-			clsout[i+no] = ClsResult{
-				Score: score,
-				Label: label,
-			}
-
+		for batchIdx := 0; batchIdx < int(predictShape[0]); batchIdx++ {
+			l := batchIdx * int(predictShape[1])
+			r := (batchIdx + 1) * int(predictShape[1])
+			label, score := argmax(predictBatch[l:r])
+			clsout[i+batchIdx] = ClsResult{Score: score, Label: int64(label)}
 			if label%2 == 1 && float64(score) > cls.thresh {
-				gocv.Rotate(srcimgs[i+no], &srcimgs[i+no], gocv.Rotate180Clockwise)
+				gocv.Rotate(srcimgs[i+batchIdx], &srcimgs[i+batchIdx], gocv.Rotate180Clockwise)
 			}
 		}
+
+		clsTime += int64(time.Since(st).Milliseconds())
 	}
 	log.Println("cls num: ", len(clsout), ", cls time elapse: ", clsTime, "ms")
 	return srcimgs
+}
+
+func numElements(shape []int32) int32 {
+	n := int32(1)
+	for _, v := range shape {
+		n *= v
+	}
+	return n
 }

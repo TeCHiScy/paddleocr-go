@@ -39,6 +39,8 @@ github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQL
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/llgcode/draw2d v0.0.0-20180817132918-587a55234ca2/go.mod h1:mVa0dA29Db2S4LVqDYLlsePDzRJLDfdhVZiI15uY0FA=
 github.com/llgcode/ps v0.0.0-20150911083025-f1443b32eedb/go.mod h1:1l8ky+Ew27CMX29uG+a2hNOKpeNYEQjjtiALiBlFQbY=
+github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi v0.0.0-20240206060553-e5a85b63b70a h1:EbrR8zBhixYTw/Khgf4wtKgdhG2h40TVc3qboyQGUuE=
+github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi v0.0.0-20240206060553-e5a85b63b70a/go.mod h1:YldWEunlZgagHtfynS8SGmgCARdMWB+SeK7EtCdWFm8=
 github.com/paulmach/orb v0.1.6/go.mod h1:pPwxxs3zoAyosNSbNKn1jiXV2+oovRDObDKfTvRegDI=
 github.com/paulmach/osm v0.1.1/go.mod h1:/UEV7XqKKTG3/46W+MtSmIl81yjV7cGoLkpol3S094I=
 github.com/phpdave11/gofpdf v1.4.2 h1:KPKiIbfwbvC/wOncwhrpRdXVj2CZTCFlw4wnoyjtHfQ=
