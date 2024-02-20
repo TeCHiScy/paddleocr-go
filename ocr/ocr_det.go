@@ -14,16 +14,12 @@ type DBDetector struct {
 	postProcess DetPostProcess
 }
 
-func NewDBDetector(modelDir string, args map[string]any) *DBDetector {
-	maxSideLen := getInt(args, "det_max_side_len", 960)
-	thresh := getFloat64(args, "det_db_thresh", 0.3)
-	boxThresh := getFloat64(args, "det_db_box_thresh", 0.5)
-	unClipRatio := getFloat64(args, "det_db_unclip_ratio", 2.0)
-
+func NewDBDetector(args *Config) *DBDetector {
+	modelDir := args.DetModelDir
 	detector := &DBDetector{
 		PaddleModel: NewPaddleModel(args),
-		preProcess:  NewDBProcess(make([]int, 0), maxSideLen),
-		postProcess: NewDBPostProcess(thresh, boxThresh, unClipRatio),
+		preProcess:  NewDBProcess(make([]int, 0), args.DetMaxSideLen),
+		postProcess: NewDBPostProcess(args.DetDBThresh, args.DetDBBoxThresh, args.DetDBUnclipRatio),
 	}
 	if checkModelExists(modelDir) {
 		home, _ := os.UserHomeDir()

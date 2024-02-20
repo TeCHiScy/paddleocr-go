@@ -21,18 +21,16 @@ type ClsResult struct {
 	Label int64
 }
 
-func NewTextClassifier(modelDir string, args map[string]any) *TextClassifier {
-	shapes := []int{3, 48, 192}
-	if v, ok := args["cls_image_shape"]; ok {
-		for i, s := range v.([]any) {
-			shapes[i] = s.(int)
-		}
+func NewTextClassifier(args *Config) *TextClassifier {
+	if !args.UseAngleCls {
+		return nil
 	}
+	modelDir := args.ClsModelDir
 	cls := &TextClassifier{
 		PaddleModel: NewPaddleModel(args),
-		batchNum:    getInt(args, "cls_batch_num", 30),
-		thresh:      getFloat64(args, "cls_thresh", 0.9),
-		shape:       shapes,
+		batchNum:    args.ClsBatchNum,
+		thresh:      args.ClsThresh,
+		shape:       args.ClsImageShape,
 	}
 	if checkModelExists(modelDir) {
 		home, _ := os.UserHomeDir()
@@ -88,14 +86,7 @@ func (cls *TextClassifier) Run(imgs []gocv.Mat) []gocv.Mat {
 
 		clsTime += int64(time.Since(st).Milliseconds())
 	}
-	log.Println("cls num: ", len(clsout), ", cls time elapse: ", clsTime, "ms")
+	log.Printf("cls num: %d, cls time elapse: %dms\n", len(clsout), clsTime)
+	log.Printf("cls: %+v\n", clsout)
 	return srcimgs
-}
-
-func numElements(shape []int32) int32 {
-	n := int32(1)
-	for _, v := range shape {
-		n *= v
-	}
-	return n
 }

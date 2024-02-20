@@ -33,15 +33,15 @@ type PaddleModel struct {
 	useIROptim  bool
 }
 
-func NewPaddleModel(args map[string]any) *PaddleModel {
+func NewPaddleModel(args *Config) *PaddleModel {
 	return &PaddleModel{
-		useGPU:      getBool(args, "use_gpu", false),
-		deviceID:    int32(getInt(args, "gpu_id", 0)),
-		initGPUMem:  uint64(getInt(args, "gpu_mem", 1000)),
-		numThreads:  getInt(args, "num_cpu_threads", 6),
-		useMKLDNN:   getBool(args, "enable_mkldnn", false),
-		useTensorRT: getBool(args, "use_tensorrt", false),
-		useIROptim:  getBool(args, "ir_optim", true),
+		useGPU:      args.UseGPU,
+		deviceID:    args.GPUID,
+		initGPUMem:  args.GPUMem,
+		numThreads:  args.NumCPUThreads,
+		useMKLDNN:   args.EnableMkldnn,
+		useTensorRT: args.UseTensorrt,
+		useIROptim:  args.IROptim,
 	}
 }
 
@@ -87,15 +87,12 @@ type TextPredictSystem struct {
 	rec      *TextRecognizer
 }
 
-func NewTextPredictSystem(args map[string]any) *TextPredictSystem {
-	sys := &TextPredictSystem{
-		detector: NewDBDetector(getString(args, "det_model_dir", ""), args),
-		rec:      NewTextRecognizer(getString(args, "rec_model_dir", ""), args),
+func NewTextPredictSystem(args *Config) *TextPredictSystem {
+	return &TextPredictSystem{
+		detector: NewDBDetector(args),
+		rec:      NewTextRecognizer(args),
+		cls:      NewTextClassifier(args),
 	}
-	if getBool(args, "use_angle_cls", false) {
-		sys.cls = NewTextClassifier(getString(args, "cls_model_dir", ""), args)
-	}
-	return sys
 }
 
 func (sys *TextPredictSystem) sortBoxes(boxes [][][]int) [][][]int {
@@ -178,24 +175,16 @@ func (sys *TextPredictSystem) Run(img gocv.Mat) []OCRText {
 }
 
 type OCRSystem struct {
-	args map[string]any
+	args *Config
 	tps  *TextPredictSystem
 }
 
-func NewOCRSystem(confFile string, a map[string]any) *OCRSystem {
+func NewOCRSystem(confFile string) *OCRSystem {
 	args, err := ReadYaml(confFile)
 	if err != nil {
-		log.Printf("Read config file %v failed! Please check. err: %v\n", confFile, err)
-		log.Println("Program will use default config.")
-		args = defaultArgs
+		log.Fatalf("Read config file %v failed! Please check. err: %v\n", confFile, err)
 	}
-	for k, v := range a {
-		args[k] = v
-	}
-	return &OCRSystem{
-		args: args,
-		tps:  NewTextPredictSystem(args),
-	}
+	return &OCRSystem{args: args, tps: NewTextPredictSystem(args)}
 }
 
 func (ocr *OCRSystem) StartServer(port string) {
@@ -260,4 +249,12 @@ func (ocr *OCRSystem) PredictDirImages(dirname string) map[string][]OCRText {
 		results[imgname] = res
 	}
 	return results
+}
+
+func numElements(shape []int32) int32 {
+	n := int32(1)
+	for _, v := range shape {
+		n *= v
+	}
+	return n
 }

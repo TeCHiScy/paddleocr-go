@@ -11,36 +11,7 @@ import (
 	"strings"
 
 	"gocv.io/x/gocv"
-	"gopkg.in/yaml.v3"
 )
-
-func getString(args map[string]any, key string, dv string) string {
-	if f, ok := args[key]; ok {
-		return f.(string)
-	}
-	return dv
-}
-
-func getFloat64(args map[string]any, key string, dv float64) float64 {
-	if f, ok := args[key]; ok {
-		return f.(float64)
-	}
-	return dv
-}
-
-func getInt(args map[string]any, key string, dv int) int {
-	if i, ok := args[key]; ok {
-		return i.(int)
-	}
-	return dv
-}
-
-func getBool(args map[string]any, key string, dv bool) bool {
-	if b, ok := args[key]; ok {
-		return b.(bool)
-	}
-	return dv
-}
 
 func ReadImage(image_path string) gocv.Mat {
 	img := gocv.IMRead(image_path, gocv.IMReadColor)
@@ -246,34 +217,4 @@ func readLines2StringSlice(filepath string) []string {
 	}
 	lines := strings.Split(string(content), "\n")
 	return lines
-}
-
-func ReadYaml(yamlPath string) (map[string]any, error) {
-	data, err := os.ReadFile(yamlPath)
-	if err != nil {
-		return nil, err
-	}
-	var body any
-	if err := yaml.Unmarshal(data, &body); err != nil {
-		return nil, err
-	}
-
-	body = convertYaml2Map(body)
-	return body.(map[string]any), nil
-}
-
-func convertYaml2Map(i any) any {
-	switch x := i.(type) {
-	case map[any]any:
-		m2 := map[string]any{}
-		for k, v := range x {
-			m2[k.(string)] = convertYaml2Map(v)
-		}
-		return m2
-	case []any:
-		for i, v := range x {
-			x[i] = convertYaml2Map(v)
-		}
-	}
-	return i
 }

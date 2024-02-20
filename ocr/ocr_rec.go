@@ -13,7 +13,6 @@ type TextRecognizer struct {
 	batchNum int
 	textLen  int
 	shape    []int
-	charType string
 	labels   []string
 
 	mean    []float32
@@ -21,24 +20,17 @@ type TextRecognizer struct {
 	isScale bool
 }
 
-func NewTextRecognizer(modelDir string, args map[string]any) *TextRecognizer {
-	shapes := []int{3, 32, 320}
-	if v, ok := args["rec_image_shape"]; ok {
-		for i, s := range v.([]any) {
-			shapes[i] = s.(int)
-		}
-	}
-	labelpath := getString(args, "rec_char_dict_path", "./config/ppocr_keys_v1.txt")
-	labels := readLines2StringSlice(labelpath)
-	if getBool(args, "use_space_char", true) {
+func NewTextRecognizer(args *Config) *TextRecognizer {
+	modelDir := args.RecModelDir
+	labels := readLines2StringSlice(args.RecCharDictPath)
+	if args.UseSpaceChar {
 		labels = append(labels, " ")
 	}
 	rec := &TextRecognizer{
 		PaddleModel: NewPaddleModel(args),
-		batchNum:    getInt(args, "rec_batch_num", 30),
-		textLen:     getInt(args, "max_text_length", 25),
-		charType:    getString(args, "rec_char_type", "ch"),
-		shape:       shapes,
+		batchNum:    args.RecBatchNum,
+		textLen:     args.MaxTextLength,
+		shape:       args.RecImageShape,
 		labels:      labels,
 
 		mean:    []float32{0.5, 0.5, 0.5},

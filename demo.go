@@ -25,7 +25,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	sys := ocr.NewOCRSystem(confFile, nil)
+	sys := ocr.NewOCRSystem(confFile)
 
 	if image != "" {
 		img := ocr.ReadImage(image)
