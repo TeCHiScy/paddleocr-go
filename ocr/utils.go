@@ -1,37 +1,24 @@
 package ocr
 
 import (
-	"archive/tar"
-	"io"
-	"log"
-	"net/http"
+	"cmp"
 	"os"
-	"path"
-	"path/filepath"
-	"strings"
+	"sort"
 
 	"gocv.io/x/gocv"
 )
 
-func ReadImage(image_path string) gocv.Mat {
-	img := gocv.IMRead(image_path, gocv.IMReadColor)
-	if img.Empty() {
-		log.Printf("Could not read image %s\n", image_path)
-		os.Exit(1)
-	}
-	return img
-}
-
-func clip(value, min, max int) int {
-	if value <= min {
-		return min
-	} else if value >= max {
+func clamp[T cmp.Ordered](x, min, max T) T {
+	if x > max {
 		return max
 	}
-	return value
+	if x < min {
+		return min
+	}
+	return x
 }
 
-func argmax(s []float32) (int, float32) {
+func argmax[T cmp.Ordered](s []T) (int, T) {
 	max, idx := s[0], 0
 	for i, v := range s {
 		if v > max {
@@ -41,140 +28,90 @@ func argmax(s []float32) (int, float32) {
 	return idx, max
 }
 
-func checkModelExists(modelPath string) bool {
-	if isPathExist(modelPath+"/model") && isPathExist(modelPath+"/params") {
-		return true
-	}
-	if strings.HasPrefix(modelPath, "http://") ||
-		strings.HasPrefix(modelPath, "ftp://") || strings.HasPrefix(modelPath, "https://") {
-		return true
-	}
-	return false
-}
-
-func downloadFile(filepath, url string) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	log.Println("[download_file] from:", url, " to:", filepath)
-	return err
-}
-
 func isPathExist(path string) bool {
-	if _, err := os.Stat(path); err == nil {
-		return true
-	} else if os.IsNotExist(err) {
+	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	return false
+	return true
 }
 
-func downloadModel(modelDir, modelPath string) (string, error) {
-	if modelPath != "" && (strings.HasPrefix(modelPath, "http://") ||
-		strings.HasPrefix(modelPath, "ftp://") || strings.HasPrefix(modelPath, "https://")) {
-		if checkModelExists(modelDir) {
-			return modelDir, nil
-		}
-		_, suffix := path.Split(modelPath)
-		outPath := filepath.Join(modelDir, suffix)
-		outDir := filepath.Dir(outPath)
-		if !isPathExist(outDir) {
-			os.MkdirAll(outDir, os.ModePerm)
-		}
-
-		if !isPathExist(outPath) {
-			err := downloadFile(outPath, modelPath)
-			if err != nil {
-				return "", err
-			}
-		}
-
-		if strings.HasSuffix(outPath, ".tar") && !checkModelExists(modelDir) {
-			unTar(modelDir, outPath)
-			os.Remove(outPath)
-			return modelDir, nil
-		}
-		return modelDir, nil
+func accumulate(vals []int32) int32 {
+	n := int32(1)
+	for _, v := range vals {
+		n *= v
 	}
-	return modelPath, nil
+	return n
 }
 
-func unTar(dst, src string) (err error) {
-	fr, err := os.Open(src)
-	if err != nil {
-		return err
+// https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/preprocess_op.cpp#L40
+func normalize(im gocv.Mat, mean []float32, scale []float32, isScale bool) {
+	e := float32(1.0)
+	if isScale {
+		e /= 255.0
 	}
-	defer fr.Close()
-
-	tr := tar.NewReader(fr)
-	for {
-		hdr, err := tr.Next()
-
-		switch {
-		case err == io.EOF:
-			return nil
-		case err != nil:
-			return err
-		case hdr == nil:
-			continue
-		}
-
-		var dstFileDir string
-		if strings.Contains(hdr.Name, "model") {
-			dstFileDir = filepath.Join(dst, "model")
-		} else if strings.Contains(hdr.Name, "params") {
-			dstFileDir = filepath.Join(dst, "params")
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			continue
-		case tar.TypeReg:
-			file, err := os.OpenFile(dstFileDir, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
-			if err != nil {
-				return err
-			}
-			_, err2 := io.Copy(file, tr)
-			if err2 != nil {
-				return err2
-			}
-			file.Close()
-		}
+	im.ConvertToWithParams(&im, gocv.MatTypeCV32FC3, e, 0)
+	bgrChannels := gocv.Split(im)
+	for i := range bgrChannels {
+		bgrChannels[i].ConvertToWithParams(&bgrChannels[i], gocv.MatTypeCV32FC1, 1.0*scale[i], (0.0-mean[i])*scale[i])
 	}
-
-	return nil
+	gocv.Merge(bgrChannels, &im)
 }
 
-func readLines2StringSlice(filepath string) []string {
-	if strings.HasPrefix(filepath, "http://") || strings.HasPrefix(filepath, "https://") {
-		home, _ := os.UserHomeDir()
-		dir := home + "/.paddleocr/rec/"
-		_, suffix := path.Split(filepath)
-		f := dir + suffix
-		if !isPathExist(f) {
-			err := downloadFile(f, filepath)
-			if err != nil {
-				log.Println("download ppocr key file error!")
-				return nil
-			}
-		}
-		filepath = f
+// https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/preprocess_op.cpp#L19
+func permute(im gocv.Mat) []float32 {
+	rh := im.Rows()
+	rw := im.Cols()
+	rc := im.Channels()
+	data := make([]float32, rh*rw*rc)
+	for i := 0; i < rc; i++ {
+		t := gocv.NewMatWithSize(rh, rw, gocv.MatTypeCV32FC1)
+		defer t.Close()
+		gocv.ExtractChannel(im, &t, i)
+		x, _ := t.DataPtrFloat32()
+		copy(data[i*rh*rw:], x)
 	}
-	content, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Println("read ppocr key file error!")
-		return nil
-	}
-	lines := strings.Split(string(content), "\n")
-	return lines
+	return data
 }
+
+// https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/preprocess_op.cpp#L28
+func permuteBatch(imgs []gocv.Mat) []float32 {
+	var data []float32
+	for _, img := range imgs {
+		data = append(data, permute(img)...)
+	}
+	return data
+}
+
+type Slice struct {
+	sort.Interface
+	idx []int
+}
+
+func (s Slice) Swap(i, j int) {
+	s.Interface.Swap(i, j)
+	s.idx[i], s.idx[j] = s.idx[j], s.idx[i]
+}
+
+func NewSlice(n sort.Interface) *Slice {
+	s := &Slice{Interface: n, idx: make([]int, n.Len())}
+	for i := range s.idx {
+		s.idx[i] = i
+	}
+	return s
+}
+
+func NewIntSlice(n ...int) *Slice         { return NewSlice(sort.IntSlice(n)) }
+func NewFloat64Slice(n ...float64) *Slice { return NewSlice(sort.Float64Slice(n)) }
+func NewStringSlice(n ...string) *Slice   { return NewSlice(sort.StringSlice(n)) }
+
+type xIntSortBy [][]int
+
+func (a xIntSortBy) Len() int           { return len(a) }
+func (a xIntSortBy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a xIntSortBy) Less(i, j int) bool { return a[i][0] < a[j][0] }
+
+type xFloatSortBy [][]float32
+
+func (a xFloatSortBy) Len() int           { return len(a) }
+func (a xFloatSortBy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a xFloatSortBy) Less(i, j int) bool { return a[i][0] < a[j][0] }

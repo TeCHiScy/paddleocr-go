@@ -10,3 +10,5 @@ require (
 )
 
 require github.com/ctessum/geom v0.2.12 // indirect
+
+replace gocv.io/x/gocv => /Users/techiscy/Desktop/gocv

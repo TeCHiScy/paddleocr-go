@@ -1,35 +1,40 @@
-# params for prediction engine
-use_gpu: false
-ir_optim: true
-enable_mkldnn: false
-use_tensorrt: false
-num_cpu_threads: 6
-gpu_id: 0
-gpu_mem: 2000
+# model links:
+# det: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_infer.tar
+# det_server: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_server_infer.tar
+# rec: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar
+# rec_server: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_server_infer.tar
+# rec_dict: https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/develop/ppocr/utils/ppocr_keys_v1.txt
+# cls: https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar
 
-# params for text detector
-det_model_dir: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_infer.tar
-det_max_side_len: 960
-det_db_thresh: 0.3
-det_db_box_thresh: 0.6
-det_db_unclip_ratio: 1.5
+predictor:
+  use_gpu: false
+  use_mkldnn: false
+  use_ir_optim: true
+  use_tensorrt: false
+  num_cpu_threads: 6
+  gpu_id: 0
+  gpu_mem: 2000
 
-# params for text recognizer
-rec_model_dir: https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar
-rec_image_shape: [3, 48, 320]
-rec_batch_num: 6
-max_text_length: 25
-rec_char_dict_path: https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/develop/ppocr/utils/ppocr_keys_v1.txt
-use_space_char: true
+detector:
+  model_dir: /root/.paddleocr/det
+  limit_type: max
+  limit_side_len: 960
+  thresh: 0.3
+  box_thresh: 0.6
+  unclip_ratio: 1.5
+  score_mode: slow
+  use_dilation: false
 
-# params for text classifier
-use_angle_cls: true
-cls_model_dir: https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar
-cls_image_shape: [3, 48, 192]
-label_list: ["0", "180"]
-cls_batch_num: 1
-cls_thresh: 0.9
+recognizer:
+  model_dir: /root/.paddleocr/rec
+  batch_num: 6
+  image_shape: [3, 48, 320]
+  max_text_length: 25
+  char_dict_path: /root/.paddleocr/rec/ppocr_keys_v1.txt
 
-det: true
-rec: true
-cls: true
+classifier:
+  enabled: true
+  model_dir: /root/.paddleocr/cls
+  thresh: 0.9
+  batch_num: 1
+  image_shape: [3, 48, 192]

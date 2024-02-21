@@ -6,48 +6,60 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config struct {
+// PredictorConfig is the configuration for paddle predictor.
+type PredictorConfig struct {
 	UseGPU        bool   `yaml:"use_gpu"`
-	IROptim       bool   `yaml:"ir_optim"`
-	EnableMkldnn  bool   `yaml:"enable_mkldnn"`
+	UseMKLDNN     bool   `yaml:"use_mkldnn"`
 	UseTensorrt   bool   `yaml:"use_tensorrt"`
+	UseIROptim    bool   `yaml:"use_ir_optim"`
 	NumCPUThreads int    `yaml:"num_cpu_threads"`
 	GPUID         int32  `yaml:"gpu_id"`
 	GPUMem        uint64 `yaml:"gpu_mem"`
-
-	DetModelDir      string  `yaml:"det_model_dir"`
-	DetMaxSideLen    int     `yaml:"det_max_side_len"`
-	DetDBThresh      float64 `yaml:"det_db_thresh"`
-	DetDBBoxThresh   float64 `yaml:"det_db_box_thresh"`
-	DetDBUnclipRatio float64 `yaml:"det_db_unclip_ratio"`
-
-	RecModelDir     string `yaml:"rec_model_dir"`
-	RecImageShape   []int  `yaml:"rec_image_shape"`
-	RecBatchNum     int    `yaml:"rec_batch_num"`
-	RecCharDictPath string `yaml:"rec_char_dict_path"`
-	MaxTextLength   int    `yaml:"max_text_length"`
-	UseSpaceChar    bool   `yaml:"use_space_char"`
-
-	UseAngleCls   bool    `yaml:"use_angle_cls"`
-	ClsModelDir   string  `yaml:"cls_model_dir"`
-	ClsImageShape []int   `yaml:"cls_image_shape"`
-	ClsBatchNum   int     `yaml:"cls_batch_num"`
-	ClsThresh     float64 `yaml:"cls_thresh"`
-
-	Det bool `yaml:"det"`
-	Rec bool `yaml:"rec"`
-	Cls bool `yaml:"cls"`
 }
 
-func ReadYaml(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+// Config is the configuration for OCR engine.
+// Refer: https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer/src/args.cpp
+type Config struct {
+	Predictor PredictorConfig `yaml:"predictor"`
+
+	Detector struct {
+		ModelDir     string  `yaml:"model_dir"`
+		LimitType    string  `yaml:"limit_type"`
+		LimitSideLen int     `yaml:"limit_side_len"`
+		Thresh       float32 `yaml:"thresh"`
+		BoxThresh    float64 `yaml:"box_thresh"`
+		UnclipRatio  float64 `yaml:"unclip_ratio"`
+		ScoreMode    string  `yaml:"score_mode"`
+		UseDilation  bool    `yaml:"use_dilation"`
+	} `yaml:"detector"`
+
+	Recognizer struct {
+		ModelDir      string `yaml:"model_dir"`
+		BatchNum      int    `yaml:"batch_num"`
+		ImageShape    []int  `yaml:"image_shape"`
+		CharDictPath  string `yaml:"char_dict_path"`
+		MaxTextLength int    `yaml:"max_text_length"`
+	} `yaml:"recognizer"`
+
+	Classifier struct {
+		Enabled    bool    `yaml:"enabled"`
+		ModelDir   string  `yaml:"model_dir"`
+		Thresh     float32 `yaml:"thresh"`
+		BatchNum   int     `yaml:"batch_num"`
+		ImageShape []int   `yaml:"image_shape"`
+	} `yaml:"classifier"`
+}
+
+// ReadConfig reads the OCR engine configuration from .yaml file.
+func ReadConfig(name string) (*Config, error) {
+	data, err := os.ReadFile(name)
 	if err != nil {
 		return nil, err
 	}
 
-	body := &Config{}
-	if err := yaml.Unmarshal(data, &body); err != nil {
+	cfg := &Config{}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
-	return body, nil
+	return cfg, nil
 }
