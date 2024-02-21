@@ -1,0 +1,239 @@
+diff --git a/core.cpp b/core.cpp
+index 6495841..036a0dd 100644
+--- a/core.cpp
++++ b/core.cpp
+@@ -814,6 +814,16 @@ void Points_Close(Points ps) {
+ 
+ void Point_Close(Point p) {}
+ 
++void Points2f_Close(Points2f ps) {
++    for (size_t i = 0; i < ps.length; i++) {
++        Point2f_Close(ps.points[i]);
++    }
++
++    delete[] ps.points;
++}
++
++void Point2f_Close(Point2f p) {}
++
+ void Rects_Close(struct Rects rs) {
+     delete[] rs.rects;
+ }
+diff --git a/core.h b/core.h
+index 955c5ea..689b470 100644
+--- a/core.h
++++ b/core.h
+@@ -121,6 +121,12 @@ typedef struct Size {
+     int height;
+ } Size;
+ 
++// Wrapper for an individual cv::cvSize
++typedef struct Size2f {
++    float width;
++    float height;
++} Size2f;
++
+ // Wrapper for an individual cv::RotatedRect
+ typedef struct RotatedRect {
+     Points pts;
+@@ -130,6 +136,15 @@ typedef struct RotatedRect {
+     double angle;
+ } RotatedRect;
+ 
++// Wrapper for an individual cv::RotatedRect
++typedef struct RotatedRect2f {
++    Points2f pts;
++    Rect boundingRect;
++    Point2f center;
++    Size2f size;
++    double angle;
++} RotatedRect2f;
++
+ // Wrapper for an individual cv::cvScalar
+ typedef struct Scalar {
+     double val1;
+@@ -268,6 +283,8 @@ void Rects_Close(struct Rects rs);
+ void Mats_Close(struct Mats mats);
+ void Point_Close(struct Point p);
+ void Points_Close(struct Points ps);
++void Point2f_Close(struct Point2f p);
++void Points2f_Close(struct Points2f ps);
+ void DMatches_Close(struct DMatches ds);
+ void MultiDMatches_Close(struct MultiDMatches mds);
+ 
+diff --git a/imgproc.cpp b/imgproc.cpp
+index dd65eac..19182ad 100644
+--- a/imgproc.cpp
++++ b/imgproc.cpp
+@@ -186,6 +186,13 @@ void BoxPoints(RotatedRect rect, Mat boxPts){
+     cv::boxPoints(rotatedRectangle, *boxPts);
+ }
+ 
++void BoxPoints2f(RotatedRect2f rect, Mat boxPts){
++    cv::Point2f centerPt(rect.center.x , rect.center.y);
++    cv::Size2f rSize(rect.size.width, rect.size.height);
++    cv::RotatedRect rotatedRectangle(centerPt, rSize, rect.angle);
++    cv::boxPoints(rotatedRectangle, *boxPts);
++}
++
+ double ContourArea(PointVector pts) {
+     return cv::contourArea(*pts);
+ }
+@@ -213,6 +220,29 @@ struct RotatedRect MinAreaRect(PointVector pts){
+     return retrect;
+ }
+ 
++struct RotatedRect2f MinAreaRect2f(PointVector pts){
++    cv::RotatedRect cvrect = cv::minAreaRect(*pts);
++
++    Point2f* rpts = new Point2f[4];
++    cv::Point2f* pts4 = new cv::Point2f[4];
++    cvrect.points(pts4);
++
++    for (size_t j = 0; j < 4; j++) {
++        Point2f pt = {pts4[j].x, pts4[j].y};
++        rpts[j] = pt;
++    }
++
++    delete[] pts4;
++
++    cv::Rect bRect = cvrect.boundingRect();
++    Rect r = {bRect.x, bRect.y, bRect.width, bRect.height};
++    Point2f centrpt = {cvrect.center.x, cvrect.center.y};
++    Size2f szsz = {cvrect.size.width, cvrect.size.height};
++
++    RotatedRect2f retrect = {(Contour2f){rpts, 4}, r, centrpt, szsz, cvrect.angle};
++    return retrect;
++}
++
+ void MinEnclosingCircle(PointVector pts, Point2f* center, float* radius){
+     cv::Point2f center2f;
+     cv::minEnclosingCircle(*pts, center2f, *radius);
+diff --git a/imgproc.go b/imgproc.go
+index 80fb091..792f04e 100644
+--- a/imgproc.go
++++ b/imgproc.go
+@@ -428,6 +428,41 @@ func BoxPoints(rect RotatedRect, pts *Mat) {
+ 	C.BoxPoints(r, pts.p)
+ }
+ 
++// BoxPoints finds the four vertices of a rotated rect. Useful to draw the rotated rectangle.
++//
++// For further Details, please see:
++// https://docs.opencv.org/3.3.0/d3/dc0/group__imgproc__shape.html#gaf78d467e024b4d7936cf9397185d2f5c
++func BoxPoints2f(rect RotatedRect2f, pts *Mat) {
++	rPoints := toCPoints2f(rect.Points)
++
++	rRect := C.struct_Rect{
++		x:      C.int(rect.BoundingRect.Min.X),
++		y:      C.int(rect.BoundingRect.Min.Y),
++		width:  C.int(rect.BoundingRect.Max.X - rect.BoundingRect.Min.X),
++		height: C.int(rect.BoundingRect.Max.Y - rect.BoundingRect.Min.Y),
++	}
++
++	rCenter := C.struct_Point2f{
++		x: C.float(rect.Center.X),
++		y: C.float(rect.Center.Y),
++	}
++
++	rSize := C.struct_Size2f{
++		width:  C.float(rect.Width),
++		height: C.float(rect.Height),
++	}
++
++	r := C.struct_RotatedRect2f{
++		pts:          rPoints,
++		boundingRect: rRect,
++		center:       rCenter,
++		size:         rSize,
++		angle:        C.double(rect.Angle),
++	}
++
++	C.BoxPoints2f(r, pts.p)
++}
++
+ // ContourArea calculates a contour area.
+ //
+ // For further details, please see:
+@@ -446,6 +481,15 @@ type RotatedRect struct {
+ 	Angle        float64
+ }
+ 
++type RotatedRect2f struct {
++	Points       []Point2f
++	BoundingRect image.Rectangle
++	Center       Point2f
++	Width        float32
++	Height       float32
++	Angle        float64
++}
++
+ // toPoints converts C.Contour to []image.Points
+ func toPoints(points C.Contour) []image.Point {
+ 	pArray := points.points
+@@ -465,6 +509,25 @@ func toPoints(points C.Contour) []image.Point {
+ 	return points4
+ }
+ 
++// toPoints2f converts C.Contour2f to []Point2f
++func toPoints2f(points C.Contour2f) []Point2f {
++	pArray := points.points
++	pLength := int(points.length)
++
++	pHdr := reflect.SliceHeader{
++		Data: uintptr(unsafe.Pointer(pArray)),
++		Len:  pLength,
++		Cap:  pLength,
++	}
++	sPoints := *(*[]C.Point)(unsafe.Pointer(&pHdr))
++
++	points4 := make([]Point2f, pLength)
++	for j, pt := range sPoints {
++		points4[j] = NewPoint2f(float32(pt.x), float32(pt.y))
++	}
++	return points4
++}
++
+ // MinAreaRect finds a rotated rectangle of the minimum area enclosing the input 2D point set.
+ //
+ // For further details, please see:
+@@ -483,6 +546,24 @@ func MinAreaRect(points PointVector) RotatedRect {
+ 	}
+ }
+ 
++// MinAreaRect finds a rotated rectangle of the minimum area enclosing the input 2D point set.
++//
++// For further details, please see:
++// https://docs.opencv.org/master/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
++func MinAreaRect2f(points PointVector) RotatedRect2f {
++	result := C.MinAreaRect2f(points.p)
++	defer C.Points2f_Close(result.pts)
++
++	return RotatedRect2f{
++		Points:       toPoints2f(result.pts),
++		BoundingRect: image.Rect(int(result.boundingRect.x), int(result.boundingRect.y), int(result.boundingRect.x)+int(result.boundingRect.width), int(result.boundingRect.y)+int(result.boundingRect.height)),
++		Center:       NewPoint2f(float32(result.center.x), float32(result.center.y)),
++		Width:        float32(result.size.width),
++		Height:       float32(result.size.height),
++		Angle:        float64(result.angle),
++	}
++}
++
+ // FitEllipse Fits an ellipse around a set of 2D points.
+ //
+ // For further details, please see:
+diff --git a/imgproc.h b/imgproc.h
+index ec862bd..63cce3c 100644
+--- a/imgproc.h
++++ b/imgproc.h
+@@ -40,8 +40,10 @@ void PyrDown(Mat src, Mat dst, Size dstsize, int borderType);
+ void PyrUp(Mat src, Mat dst, Size dstsize, int borderType);
+ struct Rect BoundingRect(PointVector pts);
+ void BoxPoints(RotatedRect rect, Mat boxPts);
++void BoxPoints2f(RotatedRect2f rect, Mat boxPts);
+ double ContourArea(PointVector pts);
+ struct RotatedRect MinAreaRect(PointVector pts);
++struct RotatedRect2f MinAreaRect2f(PointVector pts);
+ struct RotatedRect FitEllipse(PointVector pts);
+ void MinEnclosingCircle(PointVector pts, Point2f* center, float* radius);
+ PointsVector FindContours(Mat src, Mat hierarchy, int mode, int method);
