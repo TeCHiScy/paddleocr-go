@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"paddleocr-go/ocr"
+	"github.com/TeCHiScy/paddleocr-go/ocr"
 )
 
 func main() {

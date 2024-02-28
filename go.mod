@@ -1,4 +1,4 @@
-module paddleocr-go
+module github.com/TeCHiScy/paddleocr-go
 
 go 1.21
 
