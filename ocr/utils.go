@@ -52,6 +52,7 @@ func normalize(im gocv.Mat, mean []float32, scale []float32, isScale bool) {
 	im.ConvertToWithParams(&im, gocv.MatTypeCV32FC3, e, 0)
 	bgrChannels := gocv.Split(im)
 	for i := range bgrChannels {
+		defer bgrChannels[i].Close()
 		bgrChannels[i].ConvertToWithParams(&bgrChannels[i], gocv.MatTypeCV32FC1, 1.0*scale[i], (0.0-mean[i])*scale[i])
 	}
 	gocv.Merge(bgrChannels, &im)

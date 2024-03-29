@@ -62,6 +62,8 @@ func (d *detector) Run(img gocv.Mat) [][][]int {
 	t := time.Now()
 	h, w := img.Rows(), img.Cols()
 	resizeImg, ratioH, ratioW := d.Resize(img)
+	defer resizeImg.Close()
+
 	normalize(resizeImg, d.mean, d.scale, d.isScale)
 
 	d.input.Reshape([]int32{1, 3, int32(resizeImg.Rows()), int32(resizeImg.Cols())})

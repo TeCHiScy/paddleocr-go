@@ -71,6 +71,7 @@ func (o *impl) Predict(img gocv.Mat) []Result {
 	cropImgs := make([]gocv.Mat, len(boxes))
 	for i, box := range boxes {
 		cropImgs[i] = getRotateCropImage(img, box)
+		defer cropImgs[i].Close()
 	}
 	if o.classifier != nil {
 		cropImgs, dirs = o.classifier.run(cropImgs)
@@ -121,6 +122,7 @@ func getRotateCropImage(srcImg gocv.Mat, box [][]int) gocv.Mat {
 	left, right := slices.Min(xCollect), slices.Max(xCollect)
 	top, bottom := slices.Min(yCollect), slices.Max(yCollect)
 	cropImg := srcImg.Region(image.Rect(left, top, right, bottom))
+	defer cropImg.Close()
 
 	pts := make([][]int, len(box))
 	for i, pt := range box {
