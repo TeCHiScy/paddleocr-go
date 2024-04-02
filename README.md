@@ -5,7 +5,7 @@
 ## 环境准备
 
 - Go: 1.21.7
-- GoCV: 0.3.5+patch (OpenCV: 4.8.1)
+- GoCV: 0.36.0 (OpenCV: 4.9.0)
 - Paddle: 2.6
 - PaddleOCR: 2.7
 - 编译环境: Docker [paddle:latest-dev](https://www.paddlepaddle.org.cn/documentation/docs/zh/install/docker/docker_list.html)
@@ -20,21 +20,7 @@ docker run --name paddle-test -v $PWD:/paddle --network=host -it registry.baidub
 根据 [官方文档](https://go.dev/doc/install) 说明安装。
 
 ### 编译 GoCV (OpenCV)
-Go 语言通过 [GoCV](https://github.com/hybridgroup/gocv) 使用 OpenCV，它使用 CGO 调用 OpenCV 接口。需要注意，GoCV 官方实现中 MinAreaRect 和 BoxPoints 两个 API 未与 C++ 版 OpenCV 保持一致，会导致计算结果出现数值偏差 ([issue](https://github.com/hybridgroup/gocv/issues/1152))，因此需要对 GoCV 代码打补丁，修正 API 差异。下面是打补丁和编译 GoCV 的命令，GoCV 编译也可以参考 [文档](https://github.com/hybridgroup/gocv?tab=readme-ov-file#how-to-install)。
-
-```shell
-# 需要确认 sudo 命令已安装
-git clone git@github.com:hybridgroup/gocv.git
-cd gocv
-git checkout v0.35.0
-
-# 复制 gocv.patch 到 gocv 目录下
-git apply --stat gocv.patch
-git apply --check gocv.patch
-git apply gocv.patch
-
-make install 
-```
+Go 语言通过 [GoCV](https://github.com/hybridgroup/gocv) 使用 OpenCV，它使用 CGO 调用 OpenCV 接口。GoCV 编译可以参考 [文档](https://github.com/hybridgroup/gocv?tab=readme-ov-file#how-to-install)。
 
 ### 编译 Paddle 的 C 语言预测库
 Go 语言只能通过 CGO 调用 C 语言 API，不能直接与 C++ 交互，因此需要编译 Paddle 的 C 语言预测库。当然，也可以自己写 C 语言调用 C++ 的代码和头文件，详见该 [仓库](https://github.com/LKKlein/paddleocr-go/tree/dev_cxx)。
@@ -71,13 +57,7 @@ build/paddle_inference_c_install_dir
 
 ### 示例代码
 
-具体使用方法见 demo.go 中的示例代码。注意在 go.mod 将 gocv 替换为打过补丁的 gocv。
-
-```
-replace gocv.io/x/gocv => xxx
-```
-
-此外，根据 [文档](https://www.paddlepaddle.org.cn/inference/master/guides/quick_start/go_demo.html#go)，需要将 Paddle 的 C 语言预测库软链到 Go 预测库目录下，通常在 `${GOMODCACHE}`，也即 `$GOPATH/pkg/mod`（[文档](https://go.dev/wiki/GOPATH)）。
+具体使用方法见 demo.go 中的示例代码。此外，根据 [文档](https://www.paddlepaddle.org.cn/inference/master/guides/quick_start/go_demo.html#go)，需要将 Paddle 的 C 语言预测库软链到 Go 预测库目录下，通常在 `${GOMODCACHE}`，也即 `$GOPATH/pkg/mod`（[文档](https://go.dev/wiki/GOPATH)）。
 
 ```shell
 # 此处 COMMITID 根据 C 语言预测库的版本不同而不同
