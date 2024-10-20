@@ -16,8 +16,8 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
     apt-get install -y --no-install-recommends ${BUILD} && \
     apt-get autoremove -y && apt-get autoclean -y
 
-RUN cd /tmp && git clone -b v2.6.1 --depth=1 https://github.com/PaddlePaddle/Paddle.git && \
-    cd Paddle && git checkout v2.6.1 && \
+RUN cd /tmp && git clone -b v2.6.2 --depth=1 https://github.com/PaddlePaddle/Paddle.git && \
+    cd Paddle && git checkout v2.6.2 && \
     mkdir build && cd build && \
     sed -i 's/--build ./--build . --parallel 1/' ../cmake/external/gflags.cmake && \
     sed -i 's/--build ./--build . --parallel 1/' ../cmake/external/gloo.cmake && \
@@ -50,8 +50,8 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
     apt-get install -y --no-install-recommends ${BUILD} && \
     apt-get autoremove -y && apt-get autoclean -y
 
-RUN cd /tmp && git clone -b v2.6.1 --depth=1 https://github.com/PaddlePaddle/Paddle.git && \
-    cd Paddle && git checkout v2.6.1 && \
+RUN cd /tmp && git clone -b v2.6.2 --depth=1 https://github.com/PaddlePaddle/Paddle.git && \
+    cd Paddle && git checkout v2.6.2 && \
     mkdir build && cd build && \
     sed -i 's/--build ./--build . --parallel 1/' ../cmake/external/gflags.cmake && \
     sed -i 's/--build ./--build . --parallel 1/' ../cmake/external/gloo.cmake && \
@@ -74,7 +74,7 @@ RUN mkdir -p /tmp/Paddle/build/paddle_inference_c_install_dir/third_party/instal
 
 FROM paddle-${TARGETARCH} AS gocv
 
-ARG OPENCV_VERSION=4.9.0
+ARG OPENCV_VERSION=4.10.0
 ENV OPENCV_VERSION=$OPENCV_VERSION
 
 ENV BUILD="git \
@@ -150,7 +150,7 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib:/paddle_inference_install_dir/
 
 RUN cd /build && \
     go mod tidy && \
-    ln -s /paddle_inference_c_install_dir ${GOPATH}/pkg/mod/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20240301063412-585968367859/paddle_inference_c && \
+    ln -s /paddle_inference_c_install_dir ${GOPATH}/pkg/mod/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20241018162839-3b9f747fe7ea/paddle_inference_c && \
     go build demo.go
 
 FROM debian:bookworm-slim AS runner

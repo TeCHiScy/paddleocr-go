@@ -1,6 +1,6 @@
 # paddleocr-go
 
-本项目基于 [PaddleOCR-Go](https://github.com/LKKlein/paddleocr-go/tree/dev) 二次开发和完善，适配 Paddle 2.6 版本，是 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 的 Go 部署版本。具体实现对齐 [PaddleOCR 的 C++ 部署版本](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer)。
+本项目基于 [PaddleOCR-Go](https://github.com/LKKlein/paddleocr-go/tree/dev) 二次开发和完善，适配 Paddle 2.6.x 版本，是 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 的 Go 部署版本。具体实现对齐 [PaddleOCR 的 C++ 部署版本](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer)。
 
 ## 编译步骤
 
@@ -30,9 +30,9 @@ model
 
 #### 环境准备
 
-- Go: 1.21.7
-- GoCV: 0.36.0 (OpenCV: 4.9.0)
-- Paddle: 2.6
+- Go: 1.22.8
+- GoCV: 0.39.0 (OpenCV: 4.10.0)
+- Paddle: 2.6.2
 - PaddleOCR: 2.7
 - 编译环境: Docker [paddle:latest-dev](https://www.paddlepaddle.org.cn/documentation/docs/zh/install/docker/docker_list.html)
 ```shell
@@ -54,7 +54,7 @@ Paddle 提供了 [预编译包](https://www.paddlepaddle.org.cn/inference/master
 ```shell
 git clone https://github.com/PaddlePaddle/Paddle.git
 cd Paddle
-git checkout release/2.6
+git checkout v2.6.2
 mkdir build && cd build
 
 cmake -DWITH_PYTHON=OFF \
