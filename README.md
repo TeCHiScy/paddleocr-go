@@ -2,7 +2,33 @@
 
 本项目基于 [PaddleOCR-Go](https://github.com/LKKlein/paddleocr-go/tree/dev) 二次开发和完善，适配 Paddle 2.6 版本，是 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 的 Go 部署版本。具体实现对齐 [PaddleOCR 的 C++ 部署版本](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/deploy/cpp_infer)。
 
-## 环境准备
+## 编译步骤
+
+### Dockerfile
+
+本项目提供 Dockerfile 可用于最小化编译，避免在臃肿的 `paddle:latest-dev` 容器中手工编译。编译步骤如下：
+
+1. 确认编译容器内存限制 >= 16GiB。
+2. 在 [OCR 模型列表](https://paddlepaddle.github.io/PaddleOCR/latest/model/index.html) 中选择合适的模型，下载后解压在根目录 model 文件夹中，目录结构为：
+```
+model
+├── cls
+│   ├── inference.model
+│   └── inference.params
+├── det
+│   ├── inference.model
+│   └── inference.params
+└── rec
+    ├── inference.model
+    ├── inference.params
+    └── ppocr_keys_v1.txt
+```
+3. 根据需要配置 config/conf.yaml。
+4. 通过命令 `docker build .` 编译 Docker 镜像。目前支持 linux/amd64 和 linux/arm64 架构。
+
+### 手工编译
+
+#### 环境准备
 
 - Go: 1.21.7
 - GoCV: 0.36.0 (OpenCV: 4.9.0)
@@ -14,15 +40,13 @@ docker pull registry.baidubce.com/paddlepaddle/paddle:latest-dev
 docker run --name paddle-test -v $PWD:/paddle --network=host -it registry.baidubce.com/paddlepaddle/paddle:latest-dev /bin/bash
 ```
 
-## 编译步骤
-
-### 安装 Go
+#### 安装 Go
 根据 [官方文档](https://go.dev/doc/install) 说明安装。
 
-### 编译 GoCV (OpenCV)
+#### 编译 GoCV (OpenCV)
 Go 语言通过 [GoCV](https://github.com/hybridgroup/gocv) 使用 OpenCV，它使用 CGO 调用 OpenCV 接口。GoCV 编译可以参考 [文档](https://github.com/hybridgroup/gocv?tab=readme-ov-file#how-to-install)。
 
-### 编译 Paddle 的 C 语言预测库
+#### 编译 Paddle 的 C 语言预测库
 Go 语言只能通过 CGO 调用 C 语言 API，不能直接与 C++ 交互，因此需要编译 Paddle 的 C 语言预测库。当然，也可以自己写 C 语言调用 C++ 的代码和头文件，详见该 [仓库](https://github.com/LKKlein/paddleocr-go/tree/dev_cxx)。
 
 Paddle 提供了 [预编译包](https://www.paddlepaddle.org.cn/inference/master/guides/install/download_lib.html#id1)，也可以自己根据 [官方文档](https://www.paddlepaddle.org.cn/inference/master/guides/install/compile/compile_basic.html) 按需编译。注意部分编译参数需要相关依赖，请确保依赖完整再启用。下面是 CPU 版本的编译的命令。
@@ -53,7 +77,7 @@ build/paddle_inference_c_install_dir
 └── version.txt
 ```
 
-## 使用 paddleocr-go
+## 使用方法
 
 ### 示例代码
 

@@ -16,7 +16,7 @@ predictor:
   gpu_mem: 2000
 
 detector:
-  model_dir: /root/.paddleocr/det
+  model_dir: /app/model/det
   limit_type: max
   limit_side_len: 960
   thresh: 0.3
@@ -26,15 +26,15 @@ detector:
   use_dilation: false
 
 recognizer:
-  model_dir: /root/.paddleocr/rec
+  model_dir: /app/model/rec
   batch_num: 6
   image_shape: [3, 48, 320]
   max_text_length: 25
-  char_dict_path: /root/.paddleocr/rec/ppocr_keys_v1.txt
+  char_dict_path: /app/model/rec/ppocr_keys_v1.txt
 
 classifier:
   enabled: true
-  model_dir: /root/.paddleocr/cls
+  model_dir: /app/model/cls
   thresh: 0.9
   batch_num: 1
   image_shape: [3, 48, 192]
